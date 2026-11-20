@@ -1,0 +1,437 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>2단계 사전 설문 · 리드마스터 AX</title>
+  <link rel="stylesheet" href="styles.css" />
+  <style>
+    .survey-shell { max-width: 780px; margin: 0 auto; padding: 36px 20px 80px; }
+    .build-section {
+      margin-top: 28px;
+      padding-top: 24px;
+      border-top: 2px dashed var(--accent);
+      display: none;
+    }
+    .build-section.visible { display: block; }
+    .q-num {
+      display: inline-block;
+      font-size: 0.76rem;
+      font-weight: 800;
+      color: var(--accent);
+      background: var(--accent-soft);
+      padding: 2px 8px;
+      border-radius: 999px;
+      margin-right: 6px;
+    }
+  </style>
+</head>
+<body>
+  <header class="site-header">
+    <div class="container header-inner">
+      <a class="brand" href="index.html">
+        <span class="brand-mark">AX</span>
+        <span>리드마스터 AX · 2단계 사전 설문</span>
+      </a>
+      <div class="btn-row">
+        <a class="nav-ops" href="index.html">← 랜딩으로</a>
+        <a class="nav-ops" href="ops.html">운영 워크스페이스</a>
+      </div>
+    </div>
+  </header>
+
+  <main class="survey-shell">
+    <div style="margin-bottom:24px;">
+      <div class="eyebrow">FUNNEL STEP 02 · 섹션 분기 사전 설문</div>
+      <h1>리드마스터 AX 사전 설문</h1>
+      <p class="lead" style="margin-bottom:10px;">
+        공통 문항은 약 <strong>5분</strong> 소요됩니다. 9번에서 <strong>맞춤 구축</strong> 또는 <strong>둘 다</strong>를 선택하시면 구축 섹션(약 5~10분)이 자동으로 이어집니다.
+      </p>
+      <div class="btn-row">
+        <span class="chip">● 필수 문항</span>
+        <span class="chip">○ 선택 문항</span>
+        <span class="chip chip-accent" id="branch-status">현재 분기: 공통 설문만</span>
+      </div>
+    </div>
+
+    <form id="survey-form" class="card">
+      <h2 style="font-size:1.25rem; margin-bottom:18px;">1부. 공통 질문 (모든 학원)</h2>
+
+      <div class="grid-3">
+        <div class="field">
+          <label for="s-academy"><span class="q-num">1</span>학원 이름 <span class="req">*</span></label>
+          <input id="s-academy" type="text" required placeholder="예: OO영어학원" />
+        </div>
+        <div class="field">
+          <label for="s-region">지역 <span class="req">*</span></label>
+          <input id="s-region" type="text" required placeholder="예: 경기 부천" />
+        </div>
+        <div class="field">
+          <label for="s-subject">과목 <span class="req">*</span></label>
+          <input id="s-subject" type="text" required placeholder="예: 중·고등 영어" />
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div class="field">
+          <span class="field-label"><span class="q-num">2</span>답하시는 분의 역할 <span class="req">*</span></span>
+          <div class="choice-grid">
+            <label class="choice-item"><input type="radio" name="role" value="원장" required /> 원장</label>
+            <label class="choice-item"><input type="radio" name="role" value="공동 원장" /> 공동 원장</label>
+            <label class="choice-item"><input type="radio" name="role" value="실장" /> 실장</label>
+            <label class="choice-item"><input type="radio" name="role" value="강사" /> 강사</label>
+          </div>
+        </div>
+        <div class="field">
+          <span class="field-label"><span class="q-num">3</span>구매를 결정하는 분은 누구인가요? <span class="req">*</span></span>
+          <div class="choice-grid">
+            <label class="choice-item"><input type="radio" name="decisionMaker" value="본인" required /> 본인</label>
+            <label class="choice-item"><input type="radio" name="decisionMaker" value="다른 분과 함께" /> 다른 분과 함께</label>
+            <label class="choice-item"><input type="radio" name="decisionMaker" value="다른 분" /> 다른 분</label>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div class="field">
+          <label for="s-students"><span class="q-num">4</span>원생 규모 <span class="req">*</span></label>
+          <select id="s-students" required>
+            <option value="">구간 선택</option>
+            <option>30명 미만</option>
+            <option>30~70명</option>
+            <option>70~150명</option>
+            <option>150~300명</option>
+            <option>300명 이상</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="s-teachers">강사 수 (원장님 포함) <span class="req">*</span></label>
+          <select id="s-teachers" required>
+            <option value="">구간 선택</option>
+            <option>1명 (1인 학원)</option>
+            <option>2~3명</option>
+            <option>4~7명</option>
+            <option>8명 이상</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="field">
+        <span class="field-label"><span class="q-num">5</span>지금 가장 시간을 잡아먹는 일 세 가지 <span class="req">*</span></span>
+        <div class="choice-grid">
+          <label class="choice-item"><input type="checkbox" name="topPains" value="학부모 피드백 작성" /> 학부모 피드백 작성</label>
+          <label class="choice-item"><input type="checkbox" name="topPains" value="교재·문항 제작" /> 교재·문항 제작</label>
+          <label class="choice-item"><input type="checkbox" name="topPains" value="수강료·재등록 관리" /> 수강료·재등록 관리</label>
+          <label class="choice-item"><input type="checkbox" name="topPains" value="학부모 문의 응대" /> 학부모 문의 응대</label>
+          <label class="choice-item"><input type="checkbox" name="topPains" value="홍보 콘텐츠" /> 홍보 콘텐츠</label>
+          <label class="choice-item"><input type="checkbox" name="topPains" value="출결·학생 기록" /> 출결·학생 기록</label>
+        </div>
+        <input id="s-pain-other" type="text" placeholder="기타 직접 입력 (선택)" style="margin-top:8px;" />
+      </div>
+
+      <div class="field">
+        <label for="s-hours"><span class="q-num">6</span>그 일에 한 주에 몇 시간쯤 쓰시나요? <span class="req">*</span> <span class="opt">(그 일을 하는 분이 직접 적어 주세요)</span></label>
+        <input id="s-hours" type="text" required placeholder="예: 원장 주 8시간, 강사 3명 각 주 4시간" />
+      </div>
+
+      <div class="field">
+        <span class="field-label"><span class="q-num">7</span>지금 쓰는 도구 (복수 선택) <span class="req">*</span></span>
+        <div class="choice-grid">
+          <label class="choice-item"><input type="checkbox" name="tools" value="엑셀·구글 시트" /> 엑셀·구글 시트</label>
+          <label class="choice-item"><input type="checkbox" name="tools" value="학원 관리 프로그램" /> 학원 관리 프로그램</label>
+          <label class="choice-item"><input type="checkbox" name="tools" value="카카오톡" /> 카카오톡</label>
+          <label class="choice-item"><input type="checkbox" name="tools" value="네이버 밴드·카페" /> 네이버 밴드·카페</label>
+          <label class="choice-item"><input type="checkbox" name="tools" value="자체 홈페이지" /> 자체 홈페이지</label>
+          <label class="choice-item"><input type="checkbox" name="tools" value="AI 도구" /> AI 도구</label>
+          <label class="choice-item"><input type="checkbox" name="tools" value="없음" /> 없음</label>
+        </div>
+        <input id="s-tool-names" type="text" placeholder="사용 중인 학원 관리 프로그램 / AI 도구 이름 (선택)" style="margin-top:8px;" />
+      </div>
+
+      <div class="field">
+        <span class="field-label"><span class="q-num">8</span>AI를 지금 어떻게 쓰고 계신가요? <span class="opt">(선택)</span></span>
+        <div class="choice-grid">
+          <label class="choice-item"><input type="radio" name="aiUsage" value="안 씀" /> 안 씀</label>
+          <label class="choice-item"><input type="radio" name="aiUsage" value="가끔 질문" /> 가끔 질문</label>
+          <label class="choice-item"><input type="radio" name="aiUsage" value="매일 업무에" /> 매일 업무에</label>
+          <label class="choice-item"><input type="radio" name="aiUsage" value="자동화까지" /> 자동화까지</label>
+        </div>
+      </div>
+
+      <div class="field" style="padding:14px; background:var(--accent-soft); border-radius:var(--radius-sm); border:1px solid #c5e1e8;">
+        <span class="field-label"><span class="q-num">9</span>관심 있는 것 <span class="req">*</span> <span class="opt">(맞춤 구축 / 둘 다 선택 시 아래 2부 구축 섹션 열림)</span></span>
+        <div class="choice-grid">
+          <label class="choice-item"><input type="radio" name="interest" value="1-Day 교육" required /> 1-Day 교육</label>
+          <label class="choice-item"><input type="radio" name="interest" value="맞춤 구축" /> 맞춤 구축</label>
+          <label class="choice-item"><input type="radio" name="interest" value="둘 다" /> 둘 다</label>
+          <label class="choice-item"><input type="radio" name="interest" value="아직 모르겠다" /> 아직 모르겠다</label>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div class="field">
+          <label for="s-timing"><span class="q-num">10</span>희망 시기, 가능한 요일 <span class="opt">(선택)</span></label>
+          <input id="s-timing" type="text" placeholder="예: 12월 초, 화·목 오전" />
+        </div>
+        <div class="field">
+          <label for="s-format"><span class="q-num">11</span>진행 방식 <span class="opt">(선택)</span></label>
+          <select id="s-format">
+            <option value="">선택 안 함</option>
+            <option>출장</option>
+            <option>부천 내방</option>
+            <option>야간</option>
+            <option>분할</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- 2부: 구축 섹션 (분기) -->
+      <div class="build-section" id="build-section">
+        <div class="eyebrow">SECTION 2 · 맞춤 구축 사전 질문 (약 5~10분)</div>
+        <h2 style="font-size:1.25rem; margin-bottom:18px;">2부. 맞춤 구축 질문 (이원주 검토용)</h2>
+
+        <div class="field">
+          <label for="b-goal"><span class="q-num">B1</span>무엇을 만들고 싶으신가요? <span class="req">*</span></label>
+          <textarea id="b-goal" placeholder='"지금은 이렇게 하는데, 이렇게 되면 좋겠다" 형태로 자유롭게 적어 주세요.'></textarea>
+        </div>
+
+        <div class="field">
+          <label for="b-users"><span class="q-num">B2</span>누가 쓰나요? (원장/강사/학생/학부모, 복수) · 각각 몇 명쯤인가요? <span class="req">*</span></label>
+          <input id="b-users" type="text" placeholder="예: 원장 1명, 강사 4명, 학부모 90명" />
+        </div>
+
+        <div class="field">
+          <label for="b-current"><span class="q-num">B3</span>지금 그 일을 어떻게 하고 계신가요? (쓰는 파일·프로그램·순서) <span class="req">*</span></label>
+          <textarea id="b-current" placeholder="현재 업무 순서를 간단히 적어 주세요."></textarea>
+        </div>
+
+        <div class="field">
+          <span class="field-label"><span class="q-num">B4</span>그 자료는 지금 어디에 있나요? <span class="req">*</span></span>
+          <div class="choice-grid">
+            <label class="choice-item"><input type="checkbox" name="dataWhere" value="엑셀 파일" /> 엑셀 파일</label>
+            <label class="choice-item"><input type="checkbox" name="dataWhere" value="구글 시트" /> 구글 시트</label>
+            <label class="choice-item"><input type="checkbox" name="dataWhere" value="특정 프로그램 안" /> 특정 프로그램 안</label>
+            <label class="choice-item"><input type="checkbox" name="dataWhere" value="종이" /> 종이</label>
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="b-must"><span class="q-num">B5</span>꼭 있어야 하는 기능 세 가지 / 없어도 되는 것 <span class="opt">(선택)</span></label>
+          <textarea id="b-must" placeholder="필수 기능과 제외해도 되는 기능을 나눠 적어 주세요."></textarea>
+        </div>
+
+        <div class="grid-2">
+          <div class="field">
+            <label for="b-integrate"><span class="q-num">B6</span>기존 프로그램과 연결돼야 하나요? <span class="opt">(선택)</span></label>
+            <input id="b-integrate" type="text" placeholder="연동 필요한 프로그램 이름" />
+          </div>
+          <div class="field">
+            <label for="b-deadline"><span class="q-num">B7</span>언제까지 필요하신가요? (이유 포함) <span class="req">*</span></label>
+            <input id="b-deadline" type="text" placeholder="예: 겨울방학 특강 시작 전 (1월 첫째 주)" />
+          </div>
+        </div>
+
+        <div class="grid-2">
+          <div class="field">
+            <label for="b-budget"><span class="q-num">B8</span>생각하시는 예산대 <span class="req">*</span></label>
+            <select id="b-budget">
+              <option value="">선택해 주세요</option>
+              <option>아직 모르겠다</option>
+              <option>[미정 구간] 200만원 미만</option>
+              <option>[미정 구간] 200만 ~ 400만원</option>
+              <option>[미정 구간] 400만 ~ 700만원</option>
+              <option>[미정 구간] 700만원 이상</option>
+            </select>
+            <div class="faint" style="margin-top:4px;">* 최소 견적 확정 후 예산 구간 바닥을 조정합니다.</div>
+          </div>
+          <div class="field">
+            <label for="b-ref"><span class="q-num">B10</span>참고하고 싶은 서비스나 화면 링크 <span class="opt">(선택)</span></label>
+            <input id="b-ref" type="url" placeholder="https://..." />
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="b-pii"><span class="q-num">B9</span>학생·학부모 개인정보를 다루게 되나요? (이름, 연락처, 성적 등) <span class="req">*</span></label>
+          <input id="b-pii" type="text" placeholder="예: 학생 이름, 반, 월말 평가 점수 (다루지 않으면 '없음')" />
+        </div>
+      </div>
+
+      <!-- 12번 개인정보 동의 -->
+      <div class="field" style="margin-top:24px; padding-top:16px; border-top:1px solid var(--border);">
+        <label class="choice-item" style="justify-content:flex-start;">
+          <input type="checkbox" id="s-consent" required />
+          <span><span class="q-num">12</span>개인정보 수집·이용 동의 (목적: 견적과 상담 연락, 보관: 상담 종료 후 <span id="retention-span">[미정]</span>개월) <span class="req">*</span></span>
+        </label>
+      </div>
+
+      <p class="error-msg" id="survey-error" style="color:var(--red); font-weight:700; display:none;"></p>
+
+      <div class="btn-row" style="margin-top:18px;">
+        <button type="submit" class="btn btn-primary">설문 제출 · CRM 반영 및 요약 생성</button>
+      </div>
+    </form>
+
+    <!-- 결과 패널 -->
+    <div id="survey-result" class="card" style="display:none; margin-top:24px;">
+      <div class="notice notice-ok" style="margin-bottom:14px;">
+        <strong>설문이 제출되었습니다.</strong> CRM 시트(로컬 저장소)에 <strong>설문 회신</strong>으로 반영되었습니다.
+        회신 후 3영업일 안에 범위 견적서를 발송합니다.
+      </div>
+      <pre class="summary-box" id="survey-summary"></pre>
+      <div class="btn-row" style="margin-top:14px;">
+        <button type="button" class="btn btn-primary" id="btn-copy-survey">설문 요약 복사</button>
+        <a class="btn btn-secondary" href="ops.html#docs">운영 워크스페이스에서 범위 견적서 작성 →</a>
+      </div>
+    </div>
+  </main>
+
+  <script src="funnel-store.js"></script>
+  <script>
+    (function () {
+      const cfg = AXStore.getConfig();
+      document.getElementById('retention-span').textContent = cfg.retentionMonths;
+
+      const buildSection = document.getElementById('build-section');
+      const branchStatus = document.getElementById('branch-status');
+
+      function updateBranch() {
+        const sel = document.querySelector('input[name="interest"]:checked');
+        const val = sel ? sel.value : '';
+        const needBuild = (val === '맞춤 구축' || val === '둘 다');
+        buildSection.classList.toggle('visible', needBuild);
+        branchStatus.textContent = needBuild
+          ? '현재 분기: 공통 + 2부 구축 섹션 활성'
+          : '현재 분기: 공통 설문만';
+      }
+
+      document.querySelectorAll('input[name="interest"]').forEach(el => {
+        el.addEventListener('change', updateBranch);
+      });
+
+      // URL 파라미터 자동 프리필
+      const params = new URLSearchParams(location.search);
+      if (params.get('academy')) document.getElementById('s-academy').value = params.get('academy');
+      if (params.get('regionSubject')) {
+        const parts = params.get('regionSubject').split(/[·/]/).map(s => s.trim());
+        if (parts[0]) document.getElementById('s-region').value = parts[0];
+        if (parts[1]) document.getElementById('s-subject').value = parts[1];
+      }
+      if (params.get('role')) {
+        const r = document.querySelector(`input[name="role"][value="${params.get('role')}"]`);
+        if (r) r.checked = true;
+      }
+      if (params.get('interest')) {
+        const i = document.querySelector(`input[name="interest"][value="${params.get('interest')}"]`);
+        if (i) { i.checked = true; updateBranch(); }
+      }
+
+      document.getElementById('survey-form').addEventListener('submit', (e) => {
+        e.preventDefault();
+        const err = document.getElementById('survey-error');
+        const getVal = id => document.getElementById(id).value.trim();
+        const getRadio = name => {
+          const el = document.querySelector(`input[name="${name}"]:checked`);
+          return el ? el.value : '';
+        };
+        const getChecks = name => Array.from(document.querySelectorAll(`input[name="${name}"]:checked`)).map(i => i.value);
+
+        const interest = getRadio('interest');
+        const needBuild = (interest === '맞춤 구축' || interest === '둘 다');
+        const topPains = getChecks('topPains');
+        const painOther = getVal('s-pain-other');
+        if (painOther) topPains.push('기타: ' + painOther);
+        const tools = getChecks('tools');
+
+        if (!getVal('s-academy') || !getVal('s-region') || !getVal('s-subject') ||
+            !getRadio('role') || !getRadio('decisionMaker') || !getVal('s-students') ||
+            !getVal('s-teachers') || !topPains.length || !getVal('s-hours') ||
+            !tools.length || !interest || !document.getElementById('s-consent').checked) {
+          err.textContent = '1부 공통 필수 문항(●)과 개인정보 동의를 모두 입력해 주세요.';
+          err.style.display = 'block';
+          return;
+        }
+
+        const dataWhere = getChecks('dataWhere');
+        if (needBuild && (!getVal('b-goal') || !getVal('b-users') || !getVal('b-current') ||
+            !dataWhere.length || !getVal('b-deadline') || !getVal('b-budget') || !getVal('b-pii'))) {
+          err.textContent = '2부 맞춤 구축 필수 문항(●)을 모두 입력해 주세요.';
+          err.style.display = 'block';
+          return;
+        }
+
+        err.style.display = 'none';
+
+        const survey = {
+          submittedAt: new Date().toISOString(),
+          academyName: getVal('s-academy'),
+          region: getVal('s-region'),
+          subject: getVal('s-subject'),
+          role: getRadio('role'),
+          decisionMaker: getRadio('decisionMaker'),
+          students: getVal('s-students'),
+          teachers: getVal('s-teachers'),
+          topPains,
+          weeklyHours: getVal('s-hours'),
+          tools,
+          toolNames: getVal('s-tool-names'),
+          aiUsage: getRadio('aiUsage') || '미응답',
+          interest,
+          timing: getVal('s-timing'),
+          format: getVal('s-format'),
+          buildIncluded: needBuild,
+          buildGoal: needBuild ? getVal('b-goal') : '',
+          buildUsers: needBuild ? getVal('b-users') : '',
+          buildCurrent: needBuild ? getVal('b-current') : '',
+          dataWhere: needBuild ? dataWhere : [],
+          buildMust: needBuild ? getVal('b-must') : '',
+          buildIntegrate: needBuild ? getVal('b-integrate') : '',
+          buildDeadline: needBuild ? getVal('b-deadline') : '',
+          buildBudget: needBuild ? getVal('b-budget') : '',
+          buildPii: needBuild ? getVal('b-pii') : '',
+          buildRef: needBuild ? getVal('b-ref') : ''
+        };
+
+        const crmRow = AXStore.upsertCrmFromSurvey(survey);
+
+        const lines = [
+          `[리드마스터 AX 사전 설문 회신] (${crmRow.id})`,
+          `- 학원: ${survey.academyName} (${survey.region} · ${survey.subject})`,
+          `- 응답자/결정권: ${survey.role} / ${survey.decisionMaker}`,
+          `- 규모: 원생 ${survey.students}, 강사 ${survey.teachers}`,
+          `- 핵심 통증: ${survey.topPains.join(', ')} (주 ${survey.weeklyHours})`,
+          `- 현재 도구: ${survey.tools.join(', ')}${survey.toolNames ? ' [' + survey.toolNames + ']' : ''} / AI: ${survey.aiUsage}`,
+          `- 관심: ${survey.interest} / 희망 시기: ${survey.timing || '-'} / 방식: ${survey.format || '-'}`
+        ];
+        if (needBuild) {
+          lines.push(
+            `--- [2부 맞춤 구축] ---`,
+            `- 만들고 싶은 것: ${survey.buildGoal}`,
+            `- 사용자/인원: ${survey.buildUsers}`,
+            `- 현재 방식: ${survey.buildCurrent}`,
+            `- 자료 위치: ${survey.dataWhere.join(', ')}`,
+            `- 필수/제외 기능: ${survey.buildMust || '-'}`,
+            `- 기존 연동: ${survey.buildIntegrate || '-'}`,
+            `- 희망 일정: ${survey.buildDeadline}`,
+            `- 예산대: ${survey.buildBudget}`,
+            `- 개인정보: ${survey.buildPii}`,
+            `- 참고 링크: ${survey.buildRef || '-'}`
+          );
+        }
+
+        document.getElementById('survey-summary').textContent = lines.join('\n');
+        document.getElementById('survey-result').style.display = 'block';
+        document.getElementById('survey-result').scrollIntoView({ behavior: 'smooth' });
+      });
+
+      document.getElementById('btn-copy-survey').addEventListener('click', async () => {
+        try {
+          await navigator.clipboard.writeText(document.getElementById('survey-summary').textContent);
+          alert('설문 요약이 클립보드에 복사되었습니다.');
+        } catch (_) {
+          alert('자동 복사가 차단되었습니다. 텍스트를 직접 선택해 복사해 주세요.');
+        }
+      });
+    })();
+  </script>
+</body>
+</html>

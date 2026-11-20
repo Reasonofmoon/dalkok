@@ -1,0 +1,850 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>운영 워크스페이스 · 리드마스터 AX 퍼널 (송세훈 · 이원주)</title>
+  <link rel="stylesheet" href="styles.css" />
+  <style>
+    .ops-wrap { max-width: 1260px; margin: 0 auto; padding: 24px 20px 80px; }
+    .tabs { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px; border-bottom: 1px solid var(--border); padding-bottom: 12px; }
+    .tab-btn {
+      padding: 9px 16px; border-radius: var(--radius-sm); border: 1px solid var(--border-strong);
+      background: var(--surface); color: var(--ink-soft); font-weight: 700; font-size: 0.9rem; cursor: pointer; font-family: inherit;
+    }
+    .tab-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+    .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 14px 16px; }
+    .stat-val { font-size: 1.45rem; font-weight: 800; color: var(--ink); }
+    .row-red { background: #fef2f2 !important; }
+    .row-amber { background: #fffbeb !important; }
+    .doc-preview {
+      background: #fff; border: 1px solid var(--border-strong); border-radius: var(--radius);
+      padding: 32px; line-height: 1.7; font-size: 0.92rem;
+    }
+    .doc-preview h2 { font-size: 1.35rem; border-bottom: 2px solid var(--ink); padding-bottom: 8px; margin-bottom: 16px; }
+    .doc-preview h3 { font-size: 1.02rem; margin-top: 20px; margin-bottom: 8px; color: var(--accent); }
+    .doc-preview table { margin: 8px 0 14px; }
+    .modal-backdrop {
+      position: fixed; inset: 0; background: rgba(17,24,39,0.5); z-index: 60;
+      display: none; align-items: center; justify-content: center; padding: 16px;
+    }
+    .modal-backdrop.open { display: flex; }
+    .modal-box {
+      background: var(--surface); border-radius: var(--radius); max-width: 820px; width: 100%;
+      max-height: 88vh; overflow-y: auto; padding: 24px; box-shadow: 0 20px 50px rgba(0,0,0,0.25);
+    }
+  </style>
+</head>
+<body>
+  <header class="site-header no-print">
+    <div class="container header-inner" style="max-width:1260px;">
+      <a class="brand" href="ops.html">
+        <span class="brand-mark">OPS</span>
+        <span>리드마스터 AX 운영 워크스페이스</span>
+      </a>
+      <div class="btn-row">
+        <a class="nav-ops" href="index.html">1단계 랜딩</a>
+        <a class="nav-ops" href="survey.html">2단계 설문</a>
+      </div>
+    </div>
+  </header>
+
+  <main class="ops-wrap">
+    <div class="no-print" style="display:flex; justify-content:space-between; align-items:flex-end; flex-wrap:wrap; gap:12px; margin-bottom:16px;">
+      <div>
+        <div class="eyebrow">INTERNAL OPS · 송세훈 (영업·교육·창구) · 이원주 (구축·견적)</div>
+        <h1 style="font-size:1.75rem; margin-bottom:4px;">7단계 퍼널 통합 관리</h1>
+        <p class="faint" style="margin:0;">랜딩 신청 · 설문 응답이 브라우저 로컬 저장소로 자동 연동됩니다. 고객 실명·계좌는 공개 저장소에 커밋하지 않습니다.</p>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-secondary btn-sm" id="btn-export-json">전체 백업(JSON)</button>
+        <label class="btn btn-secondary btn-sm" style="cursor:pointer;">
+          백업 복원 <input type="file" id="input-import-json" accept=".json" style="display:none;" />
+        </label>
+      </div>
+    </div>
+
+    <div class="tabs no-print" role="tablist">
+      <button class="tab-btn active" data-tab="crm">1. 파이프라인 CRM (40열)</button>
+      <button class="tab-btn" data-tab="docs">2. 견적서·확정서 생성 (09·10·11)</button>
+      <button class="tab-btn" data-tab="settlement">3. 수익 배분·정산 (10:45:45)</button>
+      <button class="tab-btn" data-tab="decisions">4. 미정 항목 &amp; 기본 설정</button>
+    </div>
+
+    <!-- TAB 1: CRM -->
+    <div class="tab-panel active" id="tab-crm">
+      <div class="grid-4" id="crm-stats" style="margin-bottom:16px;"></div>
+
+      <div class="btn-row" style="justify-content:space-between; margin-bottom:12px;">
+        <div class="btn-row">
+          <select id="crm-filter-stage" style="width:auto;">
+            <option value="">전체 단계</option>
+          </select>
+          <select id="crm-filter-owner" style="width:auto;">
+            <option value="">전체 담당</option>
+            <option value="세훈">세훈</option>
+            <option value="원주">원주</option>
+          </select>
+          <span class="chip chip-red">빨강: 다음 기한 지남 / 만료</span>
+          <span class="chip chip-amber">노랑: 설문 미회신 3일+ / 견적 임박</span>
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-primary btn-sm" id="btn-add-crm">+ 학원 추가</button>
+          <button class="btn btn-secondary btn-sm" id="btn-export-crm-csv">CRM CSV 내보내기</button>
+        </div>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>학원ID</th>
+              <th>학원명 / 지역·과목</th>
+              <th>현재 단계</th>
+              <th>관심</th>
+              <th>담당</th>
+              <th>다음 할 일 / 기한</th>
+              <th>설문 / 견적 유효기한</th>
+              <th>구축 범위 · 확정가</th>
+              <th>상태 알림</th>
+              <th>작업</th>
+            </tr>
+          </thead>
+          <tbody id="crm-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- TAB 2: DOCS GENERATOR -->
+    <div class="tab-panel" id="tab-docs">
+      <div class="card no-print" style="margin-bottom:20px;">
+        <div class="grid-3">
+          <div class="field" style="margin-bottom:0;">
+            <label for="doc-type">문서 양식 선택</label>
+            <select id="doc-type">
+              <option value="range">09 범위 견적서 (3단계)</option>
+              <option value="spec">10 요구사항 확정서 (4단계)</option>
+              <option value="final">11 확정 견적서 (5단계)</option>
+            </select>
+          </div>
+          <div class="field" style="margin-bottom:0;">
+            <label for="doc-academy-select">CRM 학원 불러오기</label>
+            <select id="doc-academy-select"></select>
+          </div>
+          <div class="field" style="margin-bottom:0; display:flex; align-items:flex-end; gap:8px;">
+            <button class="btn btn-primary btn-sm" id="btn-print-doc">A4 인쇄 / PDF 저장</button>
+            <button class="btn btn-secondary btn-sm" id="btn-copy-doc">텍스트 복사</button>
+          </div>
+        </div>
+
+        <div id="doc-undecided-warn" class="notice notice-warn" style="margin-top:14px; display:none;"></div>
+
+        <!-- 빠른 편집 입력 -->
+        <div class="grid-3" style="margin-top:16px; padding-top:16px; border-top:1px solid var(--border);">
+          <div class="field" style="margin-bottom:8px;">
+            <label>구축 한 줄 이름</label>
+            <input id="d-build-title" type="text" placeholder="예: 강사용 피드백 리포트 앱" />
+          </div>
+          <div class="field" style="margin-bottom:8px;">
+            <label>예상/확정 기간</label>
+            <input id="d-period" type="text" placeholder="예: 3주 ~ 5주 (또는 2026-12-01 ~ 2026-12-28)" />
+          </div>
+          <div class="field" style="margin-bottom:8px;">
+            <label>월 유지 포함 작은 변경 (시간/월)</label>
+            <input id="d-maint-hours" type="text" placeholder="예: 2" value="2" />
+          </div>
+        </div>
+        <div class="grid-2">
+          <div class="field" style="margin-bottom:0;">
+            <label>가정 / 포함 기능 (줄바꿈으로 구분)</label>
+            <textarea id="d-assumptions" style="min-height:72px;">사용자는 원장 1명, 강사 4명
+기존 학생 자료는 구글 시트에 있음
+별도 외부 ERP 연동 없음</textarea>
+          </div>
+          <div class="field" style="margin-bottom:0;">
+            <label>포함하지 않는 것 / 하지 않는 것 (줄바꿈으로 구분)</label>
+            <textarea id="d-exclusions" style="min-height:72px;">타 학원 관리 프로그램 실시간 양방향 연동
+학부모 결제(PG) 기능</textarea>
+          </div>
+        </div>
+      </div>
+
+      <div class="doc-preview print-sheet" id="doc-preview"></div>
+    </div>
+
+    <!-- TAB 3: SETTLEMENT -->
+    <div class="tab-panel" id="tab-settlement">
+      <div class="notice" style="margin-bottom:16px;">
+        <strong>수익 배분 규칙 (확정):</strong> 대상 매출은 <strong>구축비 · 월 유지비</strong>입니다. (1-Day 교육비와 출장비 실비 정산은 제외)<br />
+        계산식: <code>(입금액 − 실비) × 10% 기금 : × 45% 송세훈 : × 45% 이원주</code> · 실비는 영수증이 있는 직접 비용(서버·도메인·API·SaaS·구축 출장 교통비)만 인정합니다.
+      </div>
+
+      <div class="grid-4" id="set-stats" style="margin-bottom:18px;"></div>
+
+      <form id="set-form" class="card" style="margin-bottom:18px;">
+        <h3 style="margin-bottom:12px;">정산 내역 추가</h3>
+        <div class="grid-5">
+          <div class="field" style="margin-bottom:0;">
+            <label>학원ID</label>
+            <input id="st-academy" type="text" required placeholder="예: AX-001" />
+          </div>
+          <div class="field" style="margin-bottom:0;">
+            <label>구분</label>
+            <select id="st-cat">
+              <option value="구축비">구축비</option>
+              <option value="유지비">유지비</option>
+            </select>
+          </div>
+          <div class="field" style="margin-bottom:0;">
+            <label>입금일</label>
+            <input id="st-date" type="date" required />
+          </div>
+          <div class="field" style="margin-bottom:0;">
+            <label>입금액 (원)</label>
+            <input id="st-amount" type="number" required placeholder="3000000" />
+          </div>
+          <div class="field" style="margin-bottom:0;">
+            <label>실비 (원 · 영수증)</label>
+            <input id="st-cost" type="number" value="0" placeholder="200000" />
+          </div>
+        </div>
+        <div class="btn-row" style="margin-top:12px;">
+          <input id="st-memo" type="text" placeholder="메모 (실비 항목 등)" style="flex:1; min-width:220px;" />
+          <button type="submit" class="btn btn-primary btn-sm">+ 정산 기록</button>
+          <button type="button" class="btn btn-secondary btn-sm" id="btn-export-set-csv">정산 CSV 내보내기</button>
+        </div>
+      </form>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>학원ID</th>
+              <th>구분</th>
+              <th>입금일</th>
+              <th>입금액</th>
+              <th>실비</th>
+              <th>배분 대상</th>
+              <th>기금 (10%)</th>
+              <th>송세훈 (45%)</th>
+              <th>이원주 (45%)</th>
+              <th>메모</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="set-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- TAB 4: DECISIONS & CONFIG -->
+    <div class="tab-panel" id="tab-decisions">
+      <div class="card" style="margin-bottom:20px;">
+        <h3>퍼널 공통 설정 (저장 시 랜딩·설문·견적서에 즉시 반영)</h3>
+        <div class="grid-3">
+          <div class="field">
+            <label>1-Day 다음 자리 가격 (원)</label>
+            <input id="cfg-next-price" type="number" />
+          </div>
+          <div class="field">
+            <label>카카오 오픈채팅 URL</label>
+            <input id="cfg-kakao" type="url" />
+          </div>
+          <div class="field">
+            <label>발행 주체 (계약 주체)</label>
+            <input id="cfg-issuer" type="text" />
+          </div>
+          <div class="field">
+            <label>담당자 연락처 (송세훈)</label>
+            <input id="cfg-phone" type="text" />
+          </div>
+          <div class="field">
+            <label>부가세 정책 (포함/별도)</label>
+            <input id="cfg-vat" type="text" />
+          </div>
+          <div class="field">
+            <label>설문 개인정보 보관 (개월)</label>
+            <input id="cfg-retention" type="text" />
+          </div>
+          <div class="field">
+            <label>지급 비율 — 계약 시 (%)</label>
+            <input id="cfg-deposit" type="text" />
+          </div>
+          <div class="field">
+            <label>지급 비율 — 검수 통과 시 (%)</label>
+            <input id="cfg-balance" type="text" />
+          </div>
+          <div class="field">
+            <label>확정 견적서 유효기간 (일) / 하자보수 (일)</label>
+            <div style="display:flex; gap:6px;">
+              <input id="cfg-final-days" type="text" placeholder="유효일" />
+              <input id="cfg-warranty" type="text" placeholder="하자보수일" />
+            </div>
+          </div>
+        </div>
+        <button class="btn btn-primary btn-sm" id="btn-save-cfg">설정 저장</button>
+      </div>
+
+      <div class="card">
+        <h3>미정 항목 체크리스트 (05 문서 · 10건)</h3>
+        <p class="faint" style="margin-top:0;">1번과 5번을 먼저 확정하면 랜딩 FAQ와 설문 예산 구간이 고정됩니다.</p>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>항목</th>
+                <th>영향 위치</th>
+                <th>상태</th>
+                <th>합의 메모</th>
+              </tr>
+            </thead>
+            <tbody id="dec-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- CRM 편집 모달 -->
+  <div class="modal-backdrop" id="crm-modal">
+    <div class="modal-box">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+        <h3 id="modal-title" style="margin:0;">학원 파이프라인 편집</h3>
+        <button class="btn btn-secondary btn-sm" id="btn-close-modal">닫기</button>
+      </div>
+      <form id="crm-edit-form">
+        <input type="hidden" id="m-orig-id" />
+        <div class="grid-3">
+          <div class="field"><label>학원ID</label><input id="m-id" type="text" required /></div>
+          <div class="field"><label>접수일</label><input id="m-receivedDate" type="date" /></div>
+          <div class="field"><label>학원명</label><input id="m-academyName" type="text" required /></div>
+          <div class="field"><label>지역·과목</label><input id="m-regionSubject" type="text" /></div>
+          <div class="field"><label>담당자(학원)</label><input id="m-contactPerson" type="text" /></div>
+          <div class="field"><label>연락 방법</label><input id="m-contactChannel" type="text" /></div>
+          <div class="field"><label>현재 단계</label><select id="m-stage"></select></div>
+          <div class="field"><label>관심</label><select id="m-interest"></select></div>
+          <div class="field"><label>담당(내부)</label><select id="m-owner"><option value="세훈">세훈</option><option value="원주">원주</option></select></div>
+          <div class="field"><label>다음 할 일</label><input id="m-nextAction" type="text" /></div>
+          <div class="field"><label>다음 기한</label><input id="m-nextDue" type="date" /></div>
+          <div class="field"><label>구축 한 줄 요약</label><input id="m-buildSummary" type="text" /></div>
+        </div>
+        <h4 style="margin:12px 0 8px; color:var(--accent);">설문 · 범위 견적 · 상담</h4>
+        <div class="grid-4">
+          <div class="field"><label>설문 발송일</label><input id="m-surveySentDate" type="date" /></div>
+          <div class="field"><label>설문 회신일</label><input id="m-surveyReplyDate" type="date" /></div>
+          <div class="field"><label>리마인드</label><select id="m-reminded"><option>안 보냄</option><option>보냄</option></select></div>
+          <div class="field"><label>범위 견적 발송일</label><input id="m-rangeQuoteSentDate" type="date" /></div>
+          <div class="field"><label>구축 최소</label><input id="m-buildMin" type="number" /></div>
+          <div class="field"><label>구축 최대</label><input id="m-buildMax" type="number" /></div>
+          <div class="field"><label>유지 최소</label><input id="m-maintMin" type="number" /></div>
+          <div class="field"><label>유지 최대</label><input id="m-maintMax" type="number" /></div>
+          <div class="field"><label>상담일</label><input id="m-consultDate" type="date" /></div>
+          <div class="field"><label>상담 형태</label><select id="m-consultType"><option value="">-</option><option>원격</option><option>방문</option></select></div>
+          <div class="field"><label>확정서 동의일</label><input id="m-specAgreedDate" type="date" /></div>
+          <div class="field"><label>확정 견적일</label><input id="m-finalQuoteDate" type="date" /></div>
+        </div>
+        <h4 style="margin:12px 0 8px; color:var(--accent);">계약 · 실행 · 공개 동의(4항목)</h4>
+        <div class="grid-4">
+          <div class="field"><label>구축 확정가</label><input id="m-buildFinalPrice" type="number" /></div>
+          <div class="field"><label>월 유지 확정가</label><input id="m-maintFinalPrice" type="number" /></div>
+          <div class="field"><label>교육 기수·순번</label><input id="m-eduCohort" type="text" /></div>
+          <div class="field"><label>입금 확인일</label><input id="m-paidDate" type="date" /></div>
+          <div class="field"><label>1-Day 일자</label><input id="m-oneDayDate" type="date" /></div>
+          <div class="field"><label>구축 시작</label><input id="m-buildStartDate" type="date" /></div>
+          <div class="field"><label>검수 통과일</label><input id="m-qaPassDate" type="date" /></div>
+          <div class="field"><label>인수 교육일</label><input id="m-handoverDate" type="date" /></div>
+          <div class="field"><label>동의-성함</label><select id="m-consentName"><option>미확인</option><option>동의</option><option>비동의</option></select></div>
+          <div class="field"><label>동의-학원명</label><select id="m-consentAcademy"><option>미확인</option><option>동의</option><option>비동의</option></select></div>
+          <div class="field"><label>동의-화면</label><select id="m-consentScreen"><option>미확인</option><option>동의</option><option>비동의</option></select></div>
+          <div class="field"><label>동의-숫자</label><select id="m-consentNumber"><option>미확인</option><option>동의</option><option>비동의</option></select></div>
+        </div>
+        <div class="grid-2">
+          <div class="field"><label>후기 수신</label><select id="m-reviewReceived"><option>미수신</option><option>수신</option></select></div>
+          <div class="field"><label>종료 사유(이탈 단계)</label><input id="m-closeReason" type="text" /></div>
+        </div>
+        <div class="btn-row" style="justify-content:space-between;">
+          <button type="button" class="btn btn-secondary btn-sm" id="btn-delete-crm" style="color:var(--red);">삭제</button>
+          <button type="submit" class="btn btn-primary">저장하기</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="funnel-store.js"></script>
+  <script>
+    (function () {
+      // 탭 전환
+      const tabBtns = document.querySelectorAll('.tab-btn');
+      function switchTab(name) {
+        tabBtns.forEach(b => b.classList.toggle('active', b.dataset.tab === name));
+        document.querySelectorAll('.tab-panel').forEach(p => p.classList.toggle('active', p.id === 'tab-' + name));
+        if (name === 'docs') renderDocPreview();
+      }
+      tabBtns.forEach(b => b.addEventListener('click', () => switchTab(b.dataset.tab)));
+      if (location.hash === '#docs') switchTab('docs');
+
+      // 필터 옵션 초기화
+      const stageFilter = document.getElementById('crm-filter-stage');
+      const mStage = document.getElementById('m-stage');
+      const mInterest = document.getElementById('m-interest');
+      AXStore.STAGES.forEach(s => {
+        stageFilter.insertAdjacentHTML('beforeend', `<option value="${s}">${s}</option>`);
+        mStage.insertAdjacentHTML('beforeend', `<option value="${s}">${s}</option>`);
+      });
+      AXStore.INTERESTS.forEach(i => mInterest.insertAdjacentHTML('beforeend', `<option value="${i}">${i}</option>`));
+
+      // ===== 1. CRM 렌더링 =====
+      function renderCrm() {
+        const rows = AXStore.getCrm();
+        const cfg = AXStore.getConfig();
+        const fStage = stageFilter.value;
+        const fOwner = document.getElementById('crm-filter-owner').value;
+
+        let redCount = 0, amberCount = 0;
+        rows.forEach(r => {
+          const al = AXStore.getRowAlerts(r, cfg);
+          if (al.some(a => a.level === 'red')) redCount++;
+          else if (al.some(a => a.level === 'amber')) amberCount++;
+        });
+
+        const activeCount = rows.filter(r => r.stage !== '종료').length;
+        const buildCount = rows.filter(r => r.interest === '맞춤 구축' || r.interest === '둘 다').length;
+
+        document.getElementById('crm-stats').innerHTML = `
+          <div class="stat-card"><div class="faint">전체 파이프라인</div><div class="stat-val">${rows.length}건 <span class="faint">(진행 ${activeCount})</span></div></div>
+          <div class="stat-card"><div class="faint">맞춤 구축 관심</div><div class="stat-val">${buildCount}건</div></div>
+          <div class="stat-card" style="border-color:#fecaca;"><div class="faint">기한 초과 / 만료 (빨강)</div><div class="stat-val" style="color:var(--red);">${redCount}건</div></div>
+          <div class="stat-card" style="border-color:#fde68a;"><div class="faint">미회신 · 임박 (노랑)</div><div class="stat-val" style="color:var(--amber);">${amberCount}건</div></div>
+        `;
+
+        const filtered = rows.filter(r => (!fStage || r.stage === fStage) && (!fOwner || r.owner === fOwner));
+        const tbody = document.getElementById('crm-tbody');
+        tbody.innerHTML = filtered.map(r => {
+          const alerts = AXStore.getRowAlerts(r, cfg);
+          const rowCls = alerts.some(a => a.level === 'red') ? 'row-red' : (alerts.some(a => a.level === 'amber') ? 'row-amber' : '');
+          const expireDate = r.rangeQuoteSentDate ? AXStore.addDaysIso(r.rangeQuoteSentDate, cfg.quoteValidDays) : '-';
+          const priceInfo = r.buildFinalPrice
+            ? `확정 ${AXStore.formatKRW(r.buildFinalPrice)}`
+            : (r.buildMin || r.buildMax ? `${AXStore.formatKRW(r.buildMin)}~${AXStore.formatKRW(r.buildMax)}` : '-');
+          return `
+            <tr class="${rowCls}">
+              <td><strong>${r.id}</strong><div class="faint">${r.receivedDate || ''}</div></td>
+              <td><strong>${r.academyName}</strong><div class="faint">${r.regionSubject || ''} · ${r.contactPerson || ''}</div></td>
+              <td><span class="chip chip-accent">${r.stage}</span></td>
+              <td>${r.interest}</td>
+              <td>${r.owner || ''}</td>
+              <td>${r.nextAction || '-'}<div class="faint">기한: ${r.nextDue || '-'}</div></td>
+              <td>설문: ${r.surveyReplyDate || (r.surveySentDate ? '발송(' + r.surveySentDate + ')' : '-')}<div class="faint">유효: ${expireDate}</div></td>
+              <td>${priceInfo}<div class="faint">${r.buildSummary || ''}</div></td>
+              <td>${alerts.map(a => `<span class="chip chip-${a.level}">${a.text}</span>`).join(' ') || '<span class="faint">정상</span>'}</td>
+              <td>
+                <div class="btn-row" style="gap:4px;">
+                  <button class="btn btn-secondary btn-sm" data-edit="${r.id}">편집</button>
+                  <button class="btn btn-secondary btn-sm" data-doc="${r.id}">문서</button>
+                </div>
+              </td>
+            </tr>
+          `;
+        }).join('');
+
+        // 문서 선택 드롭다운 갱신
+        const docSel = document.getElementById('doc-academy-select');
+        const prev = docSel.value;
+        docSel.innerHTML = rows.map(r => `<option value="${r.id}">${r.id} · ${r.academyName} (${r.stage})</option>`).join('');
+        if (prev && rows.some(r => r.id === prev)) docSel.value = prev;
+      }
+
+      stageFilter.addEventListener('change', renderCrm);
+      document.getElementById('crm-filter-owner').addEventListener('change', renderCrm);
+
+      // CRM 모달
+      const modal = document.getElementById('crm-modal');
+      const modalFields = [
+        'id','receivedDate','academyName','regionSubject','contactPerson','contactChannel',
+        'stage','interest','owner','nextAction','nextDue','buildSummary',
+        'surveySentDate','surveyReplyDate','reminded','rangeQuoteSentDate',
+        'buildMin','buildMax','maintMin','maintMax','consultDate','consultType',
+        'specAgreedDate','finalQuoteDate','buildFinalPrice','maintFinalPrice',
+        'eduCohort','paidDate','oneDayDate','buildStartDate','qaPassDate','handoverDate',
+        'consentName','consentAcademy','consentScreen','consentNumber','reviewReceived','closeReason'
+      ];
+
+      function openCrmModal(id) {
+        const rows = AXStore.getCrm();
+        const row = id ? rows.find(r => r.id === id) : {
+          id: 'AX-' + String(rows.length + 1).padStart(3, '0'),
+          receivedDate: AXStore.todayIso(),
+          stage: '신청', interest: '둘 다', owner: '세훈',
+          reminded: '안 보냄', consentName: '미확인', consentAcademy: '미확인',
+          consentScreen: '미확인', consentNumber: '미확인', reviewReceived: '미수신'
+        };
+        document.getElementById('m-orig-id').value = id || '';
+        document.getElementById('modal-title').textContent = id ? `학원 편집 (${id})` : '새 학원 추가';
+        document.getElementById('btn-delete-crm').style.display = id ? 'inline-flex' : 'none';
+        modalFields.forEach(k => {
+          const el = document.getElementById('m-' + k);
+          if (el) el.value = row[k] ?? '';
+        });
+        modal.classList.add('open');
+      }
+
+      document.getElementById('btn-add-crm').addEventListener('click', () => openCrmModal(null));
+      document.getElementById('btn-close-modal').addEventListener('click', () => modal.classList.remove('open'));
+      document.getElementById('crm-tbody').addEventListener('click', (e) => {
+        const editId = e.target.dataset.edit;
+        const docId = e.target.dataset.doc;
+        if (editId) openCrmModal(editId);
+        if (docId) {
+          document.getElementById('doc-academy-select').value = docId;
+          switchTab('docs');
+        }
+      });
+
+      document.getElementById('crm-edit-form').addEventListener('submit', (e) => {
+        e.preventDefault();
+        const rows = AXStore.getCrm();
+        const origId = document.getElementById('m-orig-id').value;
+        const obj = {};
+        modalFields.forEach(k => {
+          const el = document.getElementById('m-' + k);
+          obj[k] = el ? el.value : '';
+        });
+        if (origId) {
+          const idx = rows.findIndex(r => r.id === origId);
+          if (idx >= 0) rows[idx] = Object.assign(rows[idx], obj);
+        } else {
+          rows.unshift(obj);
+        }
+        AXStore.saveCrm(rows);
+        modal.classList.remove('open');
+        renderCrm();
+      });
+
+      document.getElementById('btn-delete-crm').addEventListener('click', () => {
+        const origId = document.getElementById('m-orig-id').value;
+        if (!origId || !confirm(`${origId} 행을 삭제하시겠습니까?`)) return;
+        AXStore.saveCrm(AXStore.getCrm().filter(r => r.id !== origId));
+        modal.classList.remove('open');
+        renderCrm();
+      });
+
+      document.getElementById('btn-export-crm-csv').addEventListener('click', () => {
+        const rows = AXStore.getCrm();
+        const cfg = AXStore.getConfig();
+        const headers = ['학원ID','접수일','학원명','지역·과목','담당자','연락 방법','현재 단계','다음 할 일','다음 기한','담당','관심','구축 한 줄 요약','설문 발송일','설문 회신일','리마인드 여부','범위 견적 발송일','견적 유효기한','구축 최소','구축 최대','유지 최소','유지 최대','상담일','상담 형태','확정서 동의일','확정 견적일','구축 확정가','월 유지 확정가','교육 기수·순번','입금 확인일','1-Day 일자','구축 시작','검수 통과일','인수 교육일','동의-성함','동의-학원명','동의-화면','동의-숫자','후기 수신','종료 사유'];
+        const data = rows.map(r => [
+          r.id,r.receivedDate,r.academyName,r.regionSubject,r.contactPerson,r.contactChannel,
+          r.stage,r.nextAction,r.nextDue,r.owner,r.interest,r.buildSummary,
+          r.surveySentDate,r.surveyReplyDate,r.reminded,r.rangeQuoteSentDate,
+          r.rangeQuoteSentDate ? AXStore.addDaysIso(r.rangeQuoteSentDate, cfg.quoteValidDays) : '',
+          r.buildMin,r.buildMax,r.maintMin,r.maintMax,r.consultDate,r.consultType,
+          r.specAgreedDate,r.finalQuoteDate,r.buildFinalPrice,r.maintFinalPrice,
+          r.eduCohort,r.paidDate,r.oneDayDate,r.buildStartDate,r.qaPassDate,r.handoverDate,
+          r.consentName,r.consentAcademy,r.consentScreen,r.consentNumber,r.reviewReceived,r.closeReason
+        ]);
+        AXStore.downloadCsv(`readmaster_ax_crm_${AXStore.todayIso()}.csv`, headers, data);
+      });
+
+      // ===== 2. 문서 생성기 (09 / 10 / 11) =====
+      function renderDocPreview() {
+        const rows = AXStore.getCrm();
+        const cfg = AXStore.getConfig();
+        const id = document.getElementById('doc-academy-select').value;
+        const r = rows.find(x => x.id === id) || rows[0] || { academyName: '[학원 이름]' };
+        const type = document.getElementById('doc-type').value;
+        const today = AXStore.todayIso();
+        const pct = AXStore.discountPct(cfg.nextSeatPrice, cfg.listPrice);
+        const buildTitle = document.getElementById('d-build-title').value.trim() || r.buildSummary || '[한 줄 이름]';
+        const period = document.getElementById('d-period').value.trim() || '[ ]주 ~ [ ]주';
+        const maintHours = document.getElementById('d-maint-hours').value.trim() || '[ ]';
+        const assumptions = document.getElementById('d-assumptions').value.split('\n').map(s => s.trim()).filter(Boolean);
+        const exclusions = document.getElementById('d-exclusions').value.split('\n').map(s => s.trim()).filter(Boolean);
+
+        let html = '';
+        if (type === 'range') {
+          const validUntil = AXStore.addDaysIso(today, cfg.quoteValidDays);
+          html = `
+            <h2>${r.academyName} 견적 (범위)</h2>
+            <table>
+              <tr><th>발행일</th><td>${today}</td><th>유효기한</th><td>${validUntil} (발행일부터 ${cfg.quoteValidDays}일)</td></tr>
+              <tr><th>발행</th><td>${cfg.issuerName}</td><th>담당</th><td>송세훈 · ${cfg.contactPhone}</td></tr>
+              <tr><th>부가세</th><td colspan="3">${cfg.vatPolicy}</td></tr>
+            </table>
+            <h3>1. 교육 — 리드마스터 AX 1-Day 컨설팅</h3>
+            <table>
+              <tr><th>현재 다음 자리 가격</th><td><strong>${AXStore.formatKRW(cfg.nextSeatPrice)}</strong> (정가 ${AXStore.formatKRW(cfg.listPrice)} 대비 −${pct}%)</td></tr>
+              <tr><th>포함 / 별도</th><td>포함: 사전 진단, 실작업 6시간, 원격 A/S 7일 · 별도: 출장비 (내방 시 없음)</td></tr>
+            </table>
+            <p class="faint">가격은 입금 확인 시점에 확정됩니다. 확정된 가격은 이후에도 유지됩니다. (범위 견적이 자리를 잡아 두지 않습니다.)</p>
+            <h3>2. 구축 — ${buildTitle}</h3>
+            <table>
+              <tr><th>범위 견적</th><td><strong>${AXStore.formatKRW(r.buildMin)} ~ ${AXStore.formatKRW(r.buildMax)}</strong></td><th>예상 기간</th><td>${period}</td></tr>
+            </table>
+            <p><strong>이 범위의 가정 (설문 답에서 온 것):</strong></p>
+            <ul>${assumptions.map(a => `<li>${a}</li>`).join('')}</ul>
+            <p><strong>범위에 포함하지 않음:</strong> ${exclusions.join(', ') || '[기입]'}</p>
+            <h3>3. 월 유지 (선택)</h3>
+            <table>
+              <tr><th>범위 견적</th><td>월 ${AXStore.formatKRW(r.maintMin)} ~ ${AXStore.formatKRW(r.maintMax)}</td></tr>
+              <tr><th>포함</th><td>서버·도메인, 오류 수정, 월 ${maintHours}시간 이내의 작은 변경</td></tr>
+              <tr><th>포함하지 않음</th><td>새 기능, 다른 프로그램 연동 추가 (월 유지 없이 구축만 계약 가능)</td></tr>
+            </table>
+            <p><strong>다음 단계:</strong> 원격 상담 30~45분으로 위 가정을 하나씩 확인합니다(방문은 협의). 상담 뒤 확정 견적을 드립니다.</p>
+            <p class="faint">결과는 학원 환경에 따라 다를 수 있습니다.</p>
+          `;
+        } else if (type === 'spec') {
+          html = `
+            <h2>${r.academyName} 요구사항 확정서</h2>
+            <table>
+              <tr><th>상담일</th><td>${r.consultDate || '[YYYY-MM-DD]'} · ${r.consultType || '[원격 / 방문]'}</td><th>작성일</th><td>${today}</td></tr>
+              <tr><th>작성</th><td>송세훈, 이원주</td><th>학원 확인</th><td>${r.contactPerson || '[확인한 분]'} · 동의일 ${r.specAgreedDate || '[YYYY-MM-DD]'}</td></tr>
+            </table>
+            <h3>1. 만드는 것</h3>
+            <p>${buildTitle} — 현재 수작업으로 처리하던 업무를 학원 전용 워크플로우로 전환합니다.</p>
+            <h3>2. 기능 목록 (필수 · 선택) 및 하지 않는 것</h3>
+            <ul>${assumptions.map(a => `<li>[필수] ${a}</li>`).join('')}</ul>
+            <p><strong>하지 않는 것:</strong> ${exclusions.join(', ') || '[이번 범위 제외 항목]'}</p>
+            <h3>3. 데이터와 계정의 소유 (독립 원칙)</h3>
+            <p>계정, 코드 저장소, 데이터, 도메인은 모두 <strong>학원 명의</strong>입니다. 송세훈과 이원주는 작업 권한을 받아 일합니다.</p>
+            <h3>4. 개인정보 처리 방식</h3>
+            <p>처리자: <strong>학원</strong> · 작업자는 위탁받은 범위에서만 접근하며, AI 서비스 전송 데이터 범위를 사전에 확정합니다.</p>
+            <h3>5. 동작 기반 검수 기준</h3>
+            <p>모호한 "만족"이 아니라 아래 실제 동작이 되면 검수를 통과한 것으로 봅니다. 학원과 함께 하나씩 확인합니다.</p>
+            <table>
+              <thead><tr><th>확인할 동작</th><th>확인하는 사람</th><th>결과</th></tr></thead>
+              <tbody>
+                <tr><td>예: 강사가 메모를 넣고 확정을 누르면 리포트 문서가 생성된다</td><td>원장 / 강사</td><td>[통과 / 미통과]</td></tr>
+                <tr><td>인수 교육: 쓰는 사람이 혼자 다시 실행할 수 있는지 확인</td><td>원장 / 강사</td><td>[통과 / 미통과]</td></tr>
+              </tbody>
+            </table>
+            <p class="faint">결과는 학원 환경에 따라 다를 수 있습니다.</p>
+          `;
+        } else {
+          html = `
+            <h2>${r.academyName} 견적 (확정)</h2>
+            <table>
+              <tr><th>발행일</th><td>${today}</td><th>유효기한</th><td>발행일부터 ${cfg.finalQuoteValidDays}일</td></tr>
+              <tr><th>발행</th><td>${cfg.issuerName}</td><th>담당</th><td>송세훈 · ${cfg.contactPhone}</td></tr>
+              <tr><th>범위의 기준</th><td>요구사항 확정서 (학원 동의 ${r.specAgreedDate || '[YYYY-MM-DD]'})</td><th>부가세</th><td>${cfg.vatPolicy}</td></tr>
+            </table>
+            <h3>1. 교육 — 리드마스터 AX 1-Day 컨설팅</h3>
+            <p>현재 다음 자리 가격: <strong>${AXStore.formatKRW(cfg.nextSeatPrice)}</strong> (정가 ${AXStore.formatKRW(cfg.listPrice)} 대비 −${pct}%) · 입금 확인 시점 확정</p>
+            <h3>2. 구축 — ${buildTitle}</h3>
+            <table>
+              <tr><th>확정 금액</th><td><strong>${AXStore.formatKRW(r.buildFinalPrice)}</strong></td><th>기간</th><td>${period}</td></tr>
+              <tr><th>포함 / 제외</th><td colspan="3">요구사항 확정서의 필수 기능·검수·인수 교육 포함 / "하지 않는 것" 제외</td></tr>
+            </table>
+            <h3>3. 월 유지 (선택)</h3>
+            <p>확정 금액: <strong>월 ${AXStore.formatKRW(r.maintFinalPrice)}</strong> (서버·도메인, 오류 수정, 월 ${maintHours}시간 이내 작은 변경 포함)</p>
+            <h3>4. 지급 일정 및 조건 (독립 원칙)</h3>
+            <ul>
+              <li>지급 일정: 계약 시 ${cfg.depositRatio}% / 검수 통과 시 ${cfg.balanceRatio}%</li>
+              <li>소유: 계정, 코드 저장소, 데이터, 도메인은 학원 명의입니다.</li>
+              <li>유지 선택: 유지 없이 구축만 계약 시 인수 교육과 ${cfg.warrantyDays}일의 하자 보수까지 제공합니다.</li>
+              <li>해지: 월 유지 해지 시 코드·데이터·접속 정보를 그대로 넘겨드리며, 인계 작업은 ${cfg.handoverFreeHours}시간까지 무상입니다.</li>
+              <li>검수: 요구사항 확정서에 적힌 동작으로 판단합니다. 범위 밖 요청은 별도 견적입니다.</li>
+            </ul>
+            <p class="faint">결과는 학원 환경에 따라 다를 수 있습니다.</p>
+          `;
+        }
+
+        const preview = document.getElementById('doc-preview');
+        preview.innerHTML = html;
+
+        const warn = document.getElementById('doc-undecided-warn');
+        if (preview.textContent.includes('[미정')) {
+          warn.style.display = 'block';
+          warn.innerHTML = '<strong>발송 전 확인:</strong> 문서 안에 <code>[미정]</code> 항목이 남아 있습니다. <strong>4. 미정 항목 &amp; 기본 설정</strong> 탭에서 값을 확정한 뒤 학원에 보내세요.';
+        } else {
+          warn.style.display = 'none';
+        }
+      }
+
+      ['doc-type','doc-academy-select','d-build-title','d-period','d-maint-hours','d-assumptions','d-exclusions']
+        .forEach(id => document.getElementById(id).addEventListener('input', renderDocPreview));
+      document.getElementById('btn-print-doc').addEventListener('click', () => window.print());
+      document.getElementById('btn-copy-doc').addEventListener('click', async () => {
+        try {
+          await navigator.clipboard.writeText(document.getElementById('doc-preview').innerText);
+          alert('문서 텍스트가 복사되었습니다.');
+        } catch (_) { alert('복사에 실패했습니다.'); }
+      });
+
+      // ===== 3. 정산 탭 (10:45:45) =====
+      document.getElementById('st-date').value = AXStore.todayIso();
+
+      function renderSettlements() {
+        const rows = AXStore.getSettlements();
+        const cfg = AXStore.getConfig();
+        let sumNet = 0, sumFund = 0, sumSehoon = 0, sumWonju = 0;
+
+        document.getElementById('set-tbody').innerHTML = rows.map(r => {
+          const sp = AXStore.calcSplit(r.amount, r.directCost, cfg);
+          sumNet += sp.net; sumFund += sp.fund; sumSehoon += sp.sehoon; sumWonju += sp.wonju;
+          return `
+            <tr>
+              <td><strong>${r.academyId}</strong></td>
+              <td><span class="chip">${r.category}</span></td>
+              <td>${r.paidDate}</td>
+              <td>${AXStore.formatKRW(r.amount)}</td>
+              <td>−${AXStore.formatKRW(r.directCost)}</td>
+              <td><strong>${AXStore.formatKRW(sp.net)}</strong></td>
+              <td>${AXStore.formatKRW(sp.fund)}</td>
+              <td>${AXStore.formatKRW(sp.sehoon)}</td>
+              <td>${AXStore.formatKRW(sp.wonju)}</td>
+              <td class="faint">${r.memo || ''}</td>
+              <td><button class="btn btn-secondary btn-sm" data-del-set="${r.id}">삭제</button></td>
+            </tr>
+          `;
+        }).join('');
+
+        document.getElementById('set-stats').innerHTML = `
+          <div class="stat-card"><div class="faint">배분 대상 누계</div><div class="stat-val">${AXStore.formatKRW(sumNet)}</div></div>
+          <div class="stat-card"><div class="faint">회사 발전 기금 (10%)</div><div class="stat-val" style="color:var(--accent);">${AXStore.formatKRW(sumFund)}</div></div>
+          <div class="stat-card"><div class="faint">송세훈 (45%)</div><div class="stat-val">${AXStore.formatKRW(sumSehoon)}</div></div>
+          <div class="stat-card"><div class="faint">이원주 (45%)</div><div class="stat-val">${AXStore.formatKRW(sumWonju)}</div></div>
+        `;
+      }
+
+      document.getElementById('set-form').addEventListener('submit', (e) => {
+        e.preventDefault();
+        const rows = AXStore.getSettlements();
+        rows.unshift({
+          id: 'SET-' + Date.now(),
+          academyId: document.getElementById('st-academy').value.trim(),
+          category: document.getElementById('st-cat').value,
+          paidDate: document.getElementById('st-date').value,
+          amount: Number(document.getElementById('st-amount').value || 0),
+          directCost: Number(document.getElementById('st-cost').value || 0),
+          memo: document.getElementById('st-memo').value.trim()
+        });
+        AXStore.saveSettlements(rows);
+        e.target.reset();
+        document.getElementById('st-date').value = AXStore.todayIso();
+        document.getElementById('st-cost').value = 0;
+        renderSettlements();
+      });
+
+      document.getElementById('set-tbody').addEventListener('click', (e) => {
+        const id = e.target.dataset.delSet;
+        if (!id || !confirm('이 정산 행을 삭제하시겠습니까?')) return;
+        AXStore.saveSettlements(AXStore.getSettlements().filter(r => r.id !== id));
+        renderSettlements();
+      });
+
+      document.getElementById('btn-export-set-csv').addEventListener('click', () => {
+        const rows = AXStore.getSettlements();
+        const cfg = AXStore.getConfig();
+        const headers = ['학원ID','구분','입금일','입금액','실비','배분 대상','기금 10%','세훈 45%','원주 45%','메모'];
+        const data = rows.map(r => {
+          const sp = AXStore.calcSplit(r.amount, r.directCost, cfg);
+          return [r.academyId, r.category, r.paidDate, r.amount, r.directCost, sp.net, sp.fund, sp.sehoon, sp.wonju, r.memo];
+        });
+        AXStore.downloadCsv(`readmaster_ax_settlement_${AXStore.todayIso()}.csv`, headers, data);
+      });
+
+      // ===== 4. 미정 항목 & 설정 =====
+      function renderDecisionsAndConfig() {
+        const cfg = AXStore.getConfig();
+        document.getElementById('cfg-next-price').value = cfg.nextSeatPrice;
+        document.getElementById('cfg-kakao').value = cfg.kakaoOpenChatUrl;
+        document.getElementById('cfg-issuer').value = cfg.issuerName;
+        document.getElementById('cfg-phone').value = cfg.contactPhone;
+        document.getElementById('cfg-vat').value = cfg.vatPolicy;
+        document.getElementById('cfg-retention').value = cfg.retentionMonths;
+        document.getElementById('cfg-deposit').value = cfg.depositRatio;
+        document.getElementById('cfg-balance').value = cfg.balanceRatio;
+        document.getElementById('cfg-final-days').value = cfg.finalQuoteValidDays;
+        document.getElementById('cfg-warranty').value = cfg.warrantyDays;
+
+        const decs = AXStore.getDecisions();
+        document.getElementById('dec-tbody').innerHTML = decs.map((d, idx) => `
+          <tr>
+            <td><strong>${d.no}</strong></td>
+            <td>${d.title}</td>
+            <td class="faint">${d.reason}</td>
+            <td>
+              <select data-dec-status="${idx}" style="width:auto;">
+                <option value="미정" ${d.status === '미정' ? 'selected' : ''}>미정</option>
+                <option value="확정" ${d.status === '확정' ? 'selected' : ''}>확정</option>
+              </select>
+            </td>
+            <td><input type="text" data-dec-note="${idx}" value="${(d.note || '').replace(/"/g, '&quot;')}" placeholder="합의 내용 기록" /></td>
+          </tr>
+        `).join('');
+      }
+
+      document.getElementById('btn-save-cfg').addEventListener('click', () => {
+        AXStore.saveConfig({
+          nextSeatPrice: Number(document.getElementById('cfg-next-price').value || 625000),
+          kakaoOpenChatUrl: document.getElementById('cfg-kakao').value.trim(),
+          issuerName: document.getElementById('cfg-issuer').value.trim(),
+          contactPhone: document.getElementById('cfg-phone').value.trim(),
+          vatPolicy: document.getElementById('cfg-vat').value.trim(),
+          retentionMonths: document.getElementById('cfg-retention').value.trim(),
+          depositRatio: document.getElementById('cfg-deposit').value.trim(),
+          balanceRatio: document.getElementById('cfg-balance').value.trim(),
+          finalQuoteValidDays: document.getElementById('cfg-final-days').value.trim(),
+          warrantyDays: document.getElementById('cfg-warranty').value.trim()
+        });
+        alert('설정이 저장되었습니다. 랜딩·설문·견적서에 즉시 반영됩니다.');
+      });
+
+      document.getElementById('dec-tbody').addEventListener('change', (e) => {
+        const decs = AXStore.getDecisions();
+        if (e.target.dataset.decStatus !== undefined) {
+          decs[Number(e.target.dataset.decStatus)].status = e.target.value;
+          AXStore.saveDecisions(decs);
+        }
+        if (e.target.dataset.decNote !== undefined) {
+          decs[Number(e.target.dataset.decNote)].note = e.target.value;
+          AXStore.saveDecisions(decs);
+        }
+      });
+
+      // 전체 JSON 백업 / 복원
+      document.getElementById('btn-export-json').addEventListener('click', () => {
+        const bundle = {
+          exportedAt: new Date().toISOString(),
+          config: AXStore.getConfig(),
+          crm: AXStore.getCrm(),
+          settlements: AXStore.getSettlements(),
+          decisions: AXStore.getDecisions(),
+          surveys: AXStore.getSurveys()
+        };
+        const blob = new Blob([JSON.stringify(bundle, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `readmaster_ax_funnel_backup_${AXStore.todayIso()}.json`;
+        a.click();
+        URL.revokeObjectURL(url);
+      });
+
+      document.getElementById('input-import-json').addEventListener('change', async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        try {
+          const data = JSON.parse(await file.text());
+          if (data.config) AXStore.saveConfig(data.config);
+          if (data.crm) AXStore.saveCrm(data.crm);
+          if (data.settlements) AXStore.saveSettlements(data.settlements);
+          if (data.decisions) AXStore.saveDecisions(data.decisions);
+          renderCrm(); renderSettlements(); renderDecisionsAndConfig();
+          alert('백업이 복원되었습니다.');
+        } catch (_) {
+          alert('올바른 백업 JSON 파일이 아닙니다.');
+        }
+      });
+
+      // 초기 렌더
+      renderCrm();
+      renderSettlements();
+      renderDecisionsAndConfig();
+    })();
+  </script>
+</body>
+</html>

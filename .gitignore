@@ -1,0 +1,13 @@
+# OS & Editor
+.DS_Store
+Thumbs.db
+desktop.ini
+.vscode/
+
+# Private planning / customer data exports (never commit PII or financials)
+tasks/
+*backup*.json
+*.csv
+*.xlsx
+*.docx
+*.zip
